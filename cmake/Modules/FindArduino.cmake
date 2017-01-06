@@ -6,69 +6,88 @@
 # @author Natesh Narain
 # @since Feb 03 2016
 
-# Find Arduino version file
-file(GLOB
-	ARDUINO_VERSION_FILES
+if (CMAKE_HOST_APPLE)
+	if (NOT ARDUINO_SEARCH_ROOT)
+		set(ARDUINO_SEARCH_ROOT $ENV{HOME})
+	endif (NOT ARDUINO_SEARCH_ROOT)
 
-	/usr/share/arduino/lib/version.txt
-	/usr/share/arduino-*/lib/version.txt
-)
+	set(ARDUINO_REVISION_FILE ${ARDUINO_SEARCH_ROOT}/Arduino/build/shared/revisions.txt)
+	if (NOT ARDUINO_REVISION_FILE)
+		message(FATAL_ERROR "Arduino Core sources could not be found")
+	endif (NOT ARDUINO_REVISION_FILE)
+	file(READ ${ARDUINO_REVISION_FILE} VERSION_TEXT)
+	string(REGEX MATCH "ARDUINO [0-9]?[0-9]\\.[0-9]?[0-9]\\.[0-9]?[0-9]" TMP ${VERSION_TEXT})
+	string(REPLACE "ARDUINO " "" TMP ${TMP})
+	string(REPLACE "." "" ARDUINO_VERSION_NUMBER ${TMP})
 
-if(NOT ARDUINO_VERSION_FILES)
-	message(FATAL_ERROR "Arduino Core could not be found")
-endif(NOT ARDUINO_VERSION_FILES)
+	string(REPLACE "/build/shared/revisions.txt" "" ARDUINO_ROOT ${ARDUINO_REVISION_FILE})
 
-set(ARDUINO_VERSION_NUMBER 0)
-set(ARDUINO_VERSION_TEXT "")
-set(ARDUINO_VERSION_FILE "")
+elseif (CMAKE_HOST_UNIX AND NOT CMAKE_HOST_APPLE)
 
-# determine the latest version available
-foreach(versionFile ${ARDUINO_VERSION_FILES})
+	# Find Arduino version file
+	file(GLOB ARDUINO_VERSION_FILES
+			 /usr/share/arduino/lib/version.txt
+			 /usr/share/arduino-*/lib/version.txt)
 
-	# get version number from the text file
-	file(READ ${versionFile} VERSION_TEXT)
+	if (NOT ARDUINO_VERSION_FILES)
+		message(FATAL_ERROR "Arduino Core could not be found")
+	endif (NOT ARDUINO_VERSION_FILES)
 
-	# remove the dots to make it a number
-	string(REPLACE "." "" VERSION_NUMBER ${VERSION_TEXT})
+	set(ARDUINO_VERSION_NUMBER 0)
+	set(ARDUINO_VERSION_TEXT "")
+	set(ARDUINO_VERSION_FILE "")
 
-	if(${VERSION_NUMBER} GREATER ${ARDUINO_VERSION_NUMBER})
+	# determine the latest version available
+	foreach (versionFile ${ARDUINO_VERSION_FILES})
 
-		set(ARDUINO_VERSION_NUMBER ${VERSION_NUMBER})
-		set(ARDUINO_VERSION_TEXT ${VERSION_TEXT})
-		set(ARDUINO_VERSION_FILE ${versionFile})
+		# get version number from the text file
+		file(READ ${versionFile} VERSION_TEXT)
 
-	endif(${VERSION_NUMBER} GREATER ${ARDUINO_VERSION_NUMBER})
+		# remove the dots to make it a number
+		string(REPLACE "." "" VERSION_NUMBER ${VERSION_TEXT})
 
-endforeach(versionFile)
+		if (${VERSION_NUMBER} GREATER ${ARDUINO_VERSION_NUMBER})
 
-# get arduino root
-string(REPLACE "/lib//version.txt" "" ARDUINO_ROOT ${ARDUINO_VERSION_FILE})
+			set(ARDUINO_VERSION_NUMBER ${VERSION_NUMBER})
+			set(ARDUINO_VERSION_TEXT ${VERSION_TEXT})
+			set(ARDUINO_VERSION_FILE ${versionFile})
+
+		endif (${VERSION_NUMBER} GREATER ${ARDUINO_VERSION_NUMBER})
+
+	endforeach (versionFile)
+
+	# get arduino root
+	string(REPLACE "/lib//version.txt" "" ARDUINO_ROOT ${ARDUINO_VERSION_FILE})
+
+endif (CMAKE_HOST_APPLE)
 
 # arduino folder locations
-
 set(ARDUINO_LIB_ROOT "${ARDUINO_ROOT}/libraries")
-set(ARDUINO_AVR_ROOT "${ARDUINO_ROOT}hardware/arduino/avr/")
+set(ARDUINO_AVR_ROOT "${ARDUINO_ROOT}/hardware/arduino/avr/")
 set(ARDUINO_CORE "${ARDUINO_AVR_ROOT}cores/arduino/")
 set(ARDUINO_VARIANT_ROOT "${ARDUINO_AVR_ROOT}variants/standard")
 
-set(ARDUINO_INCLUDE_DIR ${ARDUINO_CORE} ${ARDUINO_VARIANT_ROOT} "/usr/lib/avr/include")
+if (CMAKE_HOST_APPLE)
+	set(ARDUINO_INCLUDE_DIR ${ARDUINO_CORE} ${ARDUINO_VARIANT_ROOT})
+else (CMAKE_HOST_APPLE)
+	set(ARDUINO_INCLUDE_DIR ${ARDUINO_CORE} ${ARDUINO_VARIANT_ROOT} "/usr/lib/avr/include")
+endif (CMAKE_HOST_APPLE)
 
-file(GLOB ARDUINO_CORE_SOURCES 
-	${ARDUINO_CORE}*.cpp
-	${ARDUINO_CORE}*.c
-	${ARDUINO_CORE}*.S
-)
+file(
+		GLOB ARDUINO_CORE_SOURCES
+		${ARDUINO_CORE}*.cpp
+		${ARDUINO_CORE}*.c
+		${ARDUINO_CORE}*.S)
 
 list(REMOVE_ITEM ARDUINO_CORE_SOURCES "${ARDUINO_CORE}main.cpp")
 
 # finished finding package requirements
 include(FindPackageHandleStandardArgs)
 find_package_handle_standard_args(
-	ARDUINO
-	DEFAULT_MSG
-	ARDUINO_ROOT
-	ARDUINO_VERSION_NUMBER
-	ARDUINO_LIB_ROOT
-	ARDUINO_INCLUDE_DIR
-	ARDUINO_CORE_SOURCES
-)
+		ARDUINO
+		DEFAULT_MSG
+		ARDUINO_ROOT
+		ARDUINO_VERSION_NUMBER
+		ARDUINO_LIB_ROOT
+		ARDUINO_INCLUDE_DIR
+		ARDUINO_CORE_SOURCES)

@@ -10,7 +10,7 @@ set(CMAKE_MODULE_PATH ${CMAKE_MODULE_PATH} "${CMAKE_SOURCE_DIR}/cmake/Modules/")
 
 project(myproject C CXX ASM)
 
-if(COMMAND add_avr_executable)
+if (COMMAND add_avr_executable)
 	# debugging output
 	message(STATUS "AVR toolchain configured")
 	message(STATUS "Toolchain root: ${TOOLCHAIN_ROOT}")
@@ -20,12 +20,20 @@ if(COMMAND add_avr_executable)
 	message(STATUS "Assembler: ${CMAKE_ASM_COMPILER}")
 	message(STATUS "Assembler ID: ${CMAKE_ASM_COMPILER_ID}")
 	message(STATUS "Assembler version: ${CMAKE_ASM_COMPILER_VERSION}")
-else()
+else ()
 	message(FATAL_ERROR "Failed to configure AVR toolchain")
-endif()
+endif ()
 
-add_avr_executable(
-	${PROJECT_NAME}
+add_avr_executable(${PROJECT_NAME} test/main.cpp)
 
-	test/main.cpp
-)
+if (CMAKE_HOST_APPLE)
+	# special requirements for arduino on OS X
+	set(ARDUINO_SEARCH_ROOT "$ENV{HOME}/src")
+		message(STATUS ${ARDUINO_SEARCH_ROOT})
+	set(ARDUINO_SRC_VERSION 180)
+endif (CMAKE_HOST_APPLE)
+
+find_package(Arduino)
+if (NOT ARDUINO_FOUND)
+	message(FATAL_ERROR "Arduino REQUIRED!")
+endif ()
